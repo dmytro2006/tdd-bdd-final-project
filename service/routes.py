@@ -20,8 +20,9 @@ Product Store Service with UI
 """
 from flask import jsonify, request, abort
 from flask import url_for  # noqa: F401 pylint: disable=unused-import
-from service.models import Product
+from service.models import Product, DataValidationError, Category
 from service.common import status  # HTTP Status Codes
+from urllib.parse import quote_plus
 from . import app
 
 
@@ -97,32 +98,68 @@ def create_products():
 ######################################################################
 # L I S T   A L L   P R O D U C T S
 ######################################################################
+@app.route("/products", methods=["GET"])
+def list_all_products():
+    """Returns a list of Products"""
+    app.logger.info("Request to list Products...")
 
-#
-# PLACE YOUR CODE TO LIST ALL PRODUCTS HERE
-#
+    name = request.args.get("name")
+    category = request.args.get("category")
+    available = request.args.get("available")
+    if name:
+        products = Product.find_by_name(name)
+    elif category:
+        products = Product.find_by_category(getattr(Category, category.upper()))
+    elif available:
+        products = Product.find_by_availability(available)
+    else:
+        products = Product.all()
+        
+    products_json = [product.serialize() for product in products]
+    return products_json, status.HTTP_200_OK
 
 ######################################################################
 # R E A D   A   P R O D U C T
 ######################################################################
-
-#
-# PLACE YOUR CODE HERE TO READ A PRODUCT
-#
+@app.route("/products/<int:product_id>", methods=["GET"])
+def read_a_product(product_id):
+    product = Product.find(product_id)
+    if not product:
+        abort(status.HTTP_404_NOT_FOUND)
+    return product.serialize(), status.HTTP_200_OK
 
 ######################################################################
 # U P D A T E   A   P R O D U C T
 ######################################################################
+@app.route("/products/<int:product_id>", methods=["PUT"])
+def update_a_product(product_id):
+    app.logger.info("Request to Update a product with id [%s]", product_id)
+    check_content_type("application/json")
 
-#
-# PLACE YOUR CODE TO UPDATE A PRODUCT HERE
-#
+    product = Product.find(product_id)
+    if not product:
+        abort(status.HTTP_404_NOT_FOUND)
+    try:
+        product.deserialize(request.get_json())
+        product.id = product_id
+        product.update()
+    except DataValidationError as error:
+        return jsonify(str(error)), status.HTTP_400_BAD_REQUEST
+
+    return product.serialize(), status.HTTP_200_OK 
 
 ######################################################################
 # D E L E T E   A   P R O D U C T
 ######################################################################
+@app.route("/products/<int:product_id>", methods=["DELETE"])
+def delete_products(product_id):
+    """
+    Delete a Product
+    This endpoint will delete a Product based the id specified in the path
+    """
+    app.logger.info("Request to Delete a product with id [%s]", product_id)
 
-
-#
-# PLACE YOUR CODE TO DELETE A PRODUCT HERE
-#
+    product = Product.find(product_id)
+    if product:
+        product.delete()
+    return "", status.HTTP_204_NO_CONTENT
