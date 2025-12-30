@@ -181,7 +181,7 @@ class TestProductRoutes(TestCase):
         """It should Update an existing Product"""
         test_product = self._create_products(1)[0]
         test_product.description = "unknown"
-        
+
         resp = self.client.put(f"{BASE_URL}/{test_product.id}", json=test_product.serialize())
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         updated_product = resp.get_json()
@@ -189,7 +189,7 @@ class TestProductRoutes(TestCase):
 
     def test_update_product_invalid_id(self):
         """It should return 404"""
-        test_product = ProductFactory() 
+        test_product = ProductFactory()
         resp = self.client.put(f"{BASE_URL}/{test_product.id}", json=test_product.serialize())
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
 
